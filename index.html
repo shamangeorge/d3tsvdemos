@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8" />
+    <title>CS171 Homework 1</title>
+    <!-- loading some custom fonts -->
+    <link rel="stylesheet" type="text/css" media="screen,projection" href="https://cdn.fruitopology.com/fonts/fonts.css">
+    <link href='http://fonts.googleapis.com/css?family=Balthazar' rel='stylesheet' type='text/css'>
+
+    <style type="text/css">
+    /* YOUR CSS */
+    @charset"utf-8";
+    * {
+        padding:0;
+        margin:0;
+    }
+    body {
+        font-family:"DroidSerifRegular", "Balthazar", sans-serif;
+        margin-left: auto;
+        margin-right: auto;
+        width:700px;
+        min-width:700px;
+        max-width:700px;
+    }
+    h1 {
+        text-align: center;
+    }
+    caption {
+        margin-top:-35px;
+        margin-bottom:20px;
+        text-align: center;
+        caption-side:top;
+        padding: .2em .8em;
+        padding-top: 10px;
+        border-top: 1px dashed #000;
+        background: #fff;
+        font-weight: bold;
+        font-size: 1.1em;
+        color:orangered;
+    }
+    table {
+        font-family:"Balthazar", sans-serif;
+        max-width:600px;
+        margin-left:auto;
+        margin-right:auto;
+        font-size: 18px;
+        width: 100%;
+        margin-top: 50px;
+        margin-left:auto;
+        margin-right:auto;
+    }
+    table th {
+        padding: 1px 0 1px 0;
+        margin: 0;
+        font-size: 20px;
+        text-align: center;
+        /*dark gray*/
+        border-bottom: 1px solid #A9A9A9;
+    }
+    /*LAST MODIFIED AND SIZE COLUMN*/
+    table td {
+        padding: 1px 0 1px 0;
+        margin: 0;
+        text-align: left;
+        border: none;
+        /*gray*/
+        border-bottom: 1px solid #808080;
+    }
+    table tr:hover {
+        background-color: darkgray;
+    }
+    table td.col1 {
+        background-color: darkgray;
+        text-align: center;
+        width:15px;
+    }
+    table td.col2 {
+        text-align: left;
+        min-width:190px;
+        width:195px;
+        max-width:200px;
+    }
+    table td.col3 {
+        text-align: center;
+        width:20px;
+    }
+    table td.col4 {
+    }
+    .theaders {
+        cursor: s-resize;
+    }
+    .theaders_ascend {
+        cursor: s-resize;
+    }
+    .theaders_descend {
+        cursor: n-resize;
+    }
+    #refresher {
+        position:fixed;
+        top:0px;
+        left:0px
+    }
+    </style>
+</head>
+
+<body>
+    <script src="http://d3js.org/d3.v3.min.js"></script>
+    <script>
+    d3.text("unemp_states_us_nov_2013.tsv", function(error, text) {
+        var parsed = d3.tsv.parseRows(text);
+        process(error, parsed);
+    });
+    var byState = false,
+        byRate = true,
+        header, table,
+        tcaption,
+        thead,
+        tbody;
+    var stateHead, rateHead, barHead;
+
+    function process(error, data) {
+        header = d3.select("body").append("h1").html("Unemployment Rates for States");
+        table = d3.select("body").append("table");
+        tcaption = table.append("caption").html(' Unemployment Rates for States Monthly Rankings Seasonally Adjusted Dec. 2013p');
+        thead = table.append("thead");
+        tbody = table.append("tbody");
+
+        //header
+        var hrows = thead.selectAll("th")
+            .data(data[0])
+            .enter()
+            .append("th")
+            .text(function(d) {
+                return d;
+            })
+        //get rid of the header
+        var sData = data.splice(1);
+
+        var rows = tbody.selectAll("tr")
+            .data(sData)
+            .enter()
+            .append("tr").selectAll("td")
+            .data(function(row) {
+                return d3.range(Object.keys(row).length).map(function(column, i) {
+                    return row[Object.keys(row)[i]];
+                });
+            })
+            .enter()
+            .append("td")
+            .text(function(d) {
+                return d;
+            });
+        zebraMe(tbody);
+        stateHead = hrows[0][1];
+        stateHead.className = 'theaders';
+        rateHead = hrows[0][2];
+        rateHead.className = 'theaders';
+        stateHead.addEventListener('click', sortByState, false);
+        rateHead.addEventListener('click', sortByRate, false);
+
+
+        //Bars
+        var barColor = d3.scale.linear()
+            .domain([0, tbody.selectAll("tr")[0].length - 1])
+            .interpolate(d3.interpolateRgb)
+            .range(["orangered", "silver"]);
+        var width = 280;
+        var height = 10;
+        barHeader = thead.insert("th");
+        barHead = barHeader[0][0];
+        barHeader.text('Bars');
+        barHead.className = 'theaders';
+        barHead.addEventListener('click', sortByRate, false);
+        tbody.selectAll("tr").insert("td").append("svg")
+            .attr("width", width)
+            .attr("height", height)
+            .append("rect")
+            .attr("height", height)
+            .attr("width", function(d) {
+                return width * parseFloat(d[2]) / 10;
+            }).style("fill", function(d, i){
+                return barColor(tbody.selectAll("tr").size() - parseFloat(d[2]) * 50 / 10);
+            });
+        colorRates();
+        var dd = document.getElementsByClassName('col1');
+        //add event listeners
+        for (var i = 0; i < dd.length; i++) {
+            var k = dd[i];
+            dd[i].addEventListener('mouseover', function(e) {
+                k.bgColor = 'darkgray';
+            }, false);
+            dd[i].addEventListener('mouseout', function(e) {
+                k.bgColor = 'darkgray';
+            }, false);
+        }
+    }
+
+    function sortByState(e) {
+        if (byState) {
+            tbody.selectAll("tr").sort(function(a, b) {
+                return d3.ascending(a[1], b[1]);
+            });
+            zebraMe(tbody);
+            stateHead.className = 'theaders_descend';
+        } else {
+            tbody.selectAll("tr").sort(function(a, b) {
+                return d3.descending(a[1], b[1]);
+            });
+            zebraMe(tbody);
+            stateHead.className = 'theaders_ascend';
+        }
+        //flip the flag
+        byState = !byState;
+    }
+
+    function sortByRate(e) {
+        if (byRate) {
+            tbody.selectAll("tr").sort(function(a, b) {
+                return d3.ascending(parseFloat(a[2]), parseFloat(b[2])) ||
+                    d3.ascending(a[1], b[1]);
+            });
+            zebraMe(tbody);
+            rateHead.className = 'theaders_descend';
+            barHead.className = 'theaders_descend'
+
+        } else {
+            tbody.selectAll("tr").sort(function(a, b) {
+                return d3.descending(parseFloat(a[2]), parseFloat(b[2])) ||
+                    d3.descending(a[1], b[1]);
+            });
+            zebraMe(tbody);
+            rateHead.className = 'theaders_ascend';
+            barHead.className = 'theaders_ascend'
+        }
+        //flip the flag
+        byRate = !byRate;
+    }
+
+    function zebraMe(tbody) {
+        for (var i = 1; i <= tbody.selectAll("tr").size(); i++) {
+            var c = d3.select('tr:nth-child(' + i + ')');
+            var domElm = c[0][0];
+            if (i % 2) {
+                domElm.bgColor = 'white';
+            } else {
+                domElm.bgColor = 'lightgray';
+            }
+        }
+    }
+
+    function colorRates() {
+        for (var i = 1; i <= tbody.selectAll("tr").size(); i++) {
+            var c = d3.select('tr:nth-child(' + i + ')');
+            var domElm = c[0][0];
+            var cols = c[0][0].children;
+            // Discretize our columns
+            cols[0].className = 'col1';
+            cols[1].className = 'col2';
+            cols[2].className = 'col3';
+            cols[3].className = 'col4';
+            var color = d3.scale.linear()
+                .domain([0, tbody.selectAll("tr")[0].length - 1])
+                .interpolate(d3.interpolateRgb)
+                .range(["orangered", "silver"]);
+            if (i != tbody.selectAll("tr").size()) {
+                var tt = parseFloat(tbody.selectAll("tr").data()[i][2]);
+                cols[2].bgColor = color(tbody.selectAll("tr").size() - tt * 50 / 10);
+            } else {
+                var tt = parseFloat(tbody.selectAll("tr").data()[i - 1][2]);
+                cols[2].bgColor = color(tbody.selectAll("tr").size() - tt * 50 / 10);
+            }
+        }
+    }
+    </script>
+</body>
+
+</html>

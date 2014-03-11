@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <script src="http://d3js.org/d3.v3.min.js"></script>
+    <style type="text/css">
+    rect {
+        fill: teal;
+        fill-opacity: .8;
+    }
+    text {
+        font: 10px sans-serif;
+    }
+    </style>
+</head>
+
+<body>
+    <label>
+        <input id='state' type="radio" name="order" value="state">State</label>
+    <label>
+        <input id='rate' type="radio" name="order" value="rate" checked>Rate</label>
+    <script type="text/javascript">
+    var margin = {
+        top: 50,
+        bottom: 10,
+        left: 300,
+        right: 150
+    };
+    var byState = false;
+    var byRate = true;
+    var width = 1000 - margin.left - margin.right;
+    var height = 1000 - margin.top - margin.bottom;
+
+    var xScale = d3.scale.linear().range([0, width]);
+    var yScale = d3.scale.ordinal().rangeRoundBands([0, height], .8, 0);
+
+    var bar_height = 15;
+
+    var state = function(d) {
+        return d.State;
+    };
+
+    var svg = d3.select("body").append("svg")
+        .attr("width", width + margin.left + margin.right)
+        .attr("height", height + margin.top + margin.bottom);
+
+    var g = svg.append("g")
+        .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+
+    d3.tsv("unemp_states_us_nov_2013.tsv", function(data) {
+
+        var max = d3.max(data, function(d) {
+            return d.Rate;
+        });
+        var min = 0;
+        var color = d3.scale.linear()
+            .domain([0, data.length - 1])
+            .interpolate(d3.interpolateRgb)
+            .range(["orangered", "silver"]);
+
+        xScale.domain([min, max]);
+        yScale.domain(data.map(state));
+
+        var groups = g.append("g")
+            .selectAll("g")
+            .data(data)
+            .enter()
+            .append("g")
+            .attr("transform", function(d, i) {
+                return "translate(0, " + yScale(d.State) + ")";
+            })
+
+        groups.append("text")
+            .attr("x", function(d) {
+                return xScale(d.Rate) - 5;
+            })
+            .attr("y", function(d) {
+                return bar_height / 2 + 2;
+            })
+            .text(function(d) {
+                return d.Rate;
+            }).attr("text-anchor", 'end')
+            .style("fill", "black");
+
+        groups.append("text")
+            .attr("x", function(d) {
+                return -10;
+            })
+            .attr("y", function(d) {
+                return bar_height / 2 + 3;
+            })
+            .text(function(d) {
+                return d.State;
+            }).attr("text-anchor", 'end')
+            .attr("font-size", '20px')
+            .style("fill", "black");
+
+        var bars = groups
+            .append("rect")
+            .attr("width", function(d) {
+                return xScale(d.Rate);
+            })
+            .attr("height", bar_height)
+            .style("fill", function(d) {
+                return color(parseFloat(d.Rate) * 50 / 10);
+            })
+
+        document.getElementById('state').addEventListener('click', sortByState, false);
+        document.getElementById('rate').addEventListener('click', sortByRate, false);
+
+        function reorder(e) {
+            //yScale.domain(data.map(state));
+            groups
+                .transition()
+                .duration(750)
+                .delay(function(d, i) {
+                    return i * 10;
+                })
+                .attr("transform", function(d, i) {
+                    return "translate(" + 0 + ", " + yScale(data[i].State) + ")";
+                })
+        }
+
+        function sortByState(e) {
+            if (byState) {
+                data.sort(function(a, b) {
+                    return d3.ascending(a.State, b.State);
+                });
+            } else {
+                data.sort(function(a, b) {
+                    return d3.descending(a.State, b.State);
+                });
+            }
+            //flip the flag
+            byState = !byState;
+            reorder(e);
+        }
+
+        function sortByRate(e) {
+            if (byRate) {
+                data.sort(function(a, b) {
+                    return d3.ascending(parseFloat(a.Rate), parseFloat(b.Rate)) ||
+                        d3.ascending(a.State, b.State);
+                });
+
+            } else {
+                data.sort(function(a, b) {
+                    return d3.descending(parseFloat(a.Rate), parseFloat(b.Rate)) ||
+                        d3.descending(a.State, b.State);
+                });
+            }
+            //flip the flag
+            byRate = !byRate;
+            reorder(e);
+        }
+    });
+    </script>
+</body>
+
+</html>
