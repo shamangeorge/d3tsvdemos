@@ -1,0 +1,11 @@
+image: alpine:latest
+
+pages:
+  stage: deploy
+  script:
+  - mkdir public && cp -r index.html design.html public/
+  artifacts:
+    paths:
+    - public
+  only:
+  - master
