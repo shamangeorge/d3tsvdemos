@@ -3,7 +3,7 @@ image: alpine:latest
 pages:
   stage: deploy
   script:
-  - mkdir public && cp -r index.html design.html public/
+  - mkdir public && cp -r unemp_states_us_nov_2013.tsv index.html design.html public/
   artifacts:
     paths:
     - public
